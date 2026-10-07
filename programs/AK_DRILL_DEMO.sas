@@ -1403,6 +1403,70 @@ GOPTIONS RESET = SYMBOL;
 %LET _CLIENTPROJECTNAME=;
 
 
+/*   START OF NODE: Rig Productivity-Cost Balance   */
+%LET _CLIENTTASKLABEL='Rig Productivity-Cost Balance';
+%LET _CLIENTPROCESSFLOWNAME='Process Flow';
+%LET _CLIENTPROJECTPATH='C:\Projects\AK_DRILL_DEMO.egp';
+%LET _CLIENTPROJECTPATHHOST='SAS-122SM74';
+%LET _CLIENTPROJECTNAME='AK_DRILL_DEMO.egp';
+
+/* -------------------------------------------------------------------
+   Business objective: identify which rig delivers the best balance
+   between productivity (meters per hour) and cost (cost per meter).
+   A higher Productivity_Cost_Balance_Score indicates better output per
+   dollar spent. This supports rig performance benchmarking and cost
+   optimization decisions.
+   ------------------------------------------------------------------- */
+
+%_eg_conditional_dropds(WORK.RIG_PRODUCTIVITY_COST_BALANCE);
+
+PROC SQL;
+    CREATE TABLE WORK.RIG_PRODUCTIVITY_COST_BALANCE AS
+    SELECT
+        Rig_ID,
+        MEAN(Meters_Per_Hour) AS Avg_Meters_Per_Hour FORMAT=COMMA10.2,
+        MEAN(Cost_Per_Meter) AS Avg_Cost_Per_Meter FORMAT=DOLLAR12.2,
+        (MEAN(Meters_Per_Hour) / MEAN(Cost_Per_Meter)) AS Productivity_Cost_Balance_Score FORMAT=COMMA10.4,
+        CALCULATED Productivity_Cost_Balance_Score AS Balance_Score_Alt
+    FROM WORK.QUERY_FOR_AK_DRILLING_DEMO__F4A5
+    GROUP BY Rig_ID
+    ORDER BY CALCULATED Productivity_Cost_Balance_Score DESC;
+QUIT;
+
+TITLE;
+TITLE1 "Rig Productivity-Cost Balance Ranking";
+FOOTNOTE;
+FOOTNOTE1 "Higher score = better productivity relative to cost";
+PROC PRINT DATA=WORK.RIG_PRODUCTIVITY_COST_BALANCE NOOBS;
+    VAR Rig_ID Avg_Meters_Per_Hour Avg_Cost_Per_Meter Productivity_Cost_Balance_Score;
+RUN;
+
+/* Capture the best-performing rig for quick business reporting */
+PROC SQL;
+    CREATE TABLE WORK.TOP_RIG_BY_BALANCE AS
+    SELECT *
+    FROM WORK.RIG_PRODUCTIVITY_COST_BALANCE
+    WHERE PRODUCTIVITY_COST_BALANCE_SCORE = (
+        SELECT MAX(Productivity_Cost_Balance_Score)
+        FROM WORK.RIG_PRODUCTIVITY_COST_BALANCE
+    );
+QUIT;
+
+TITLE;
+TITLE1 "Best Rig by Productivity-Cost Balance";
+FOOTNOTE;
+FOOTNOTE1 "Top rig identified by highest meters-per-hour relative to cost-per-meter";
+PROC PRINT DATA=WORK.TOP_RIG_BY_BALANCE NOOBS;
+    VAR Rig_ID Avg_Meters_Per_Hour Avg_Cost_Per_Meter Productivity_Cost_Balance_Score;
+RUN;
+
+%LET _CLIENTTASKLABEL=;
+%LET _CLIENTPROCESSFLOWNAME=;
+%LET _CLIENTPROJECTPATH=;
+%LET _CLIENTPROJECTPATHHOST=;
+%LET _CLIENTPROJECTNAME=;
+
+
 /*   START OF NODE: Line Plot   */
 %LET _CLIENTTASKLABEL='Line Plot';
 %LET _CLIENTPROCESSFLOWNAME='Process Flow';
